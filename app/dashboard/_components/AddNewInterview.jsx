@@ -12,6 +12,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { chatSession } from "@/utils/GeminiAIModal";
+import { LoaderCircle } from "lucide-react";
 
 function AddNewInterview() {
   const [openDialog, setOpenDialog] = useState(false);
@@ -19,10 +21,48 @@ function AddNewInterview() {
   const [jobPosition, setJobPosition] = useState();
   const [jobDesc, setJobDesc] = useState();
   const [jobExperience, setJobExperience] = useState();
+  const [loading, setLoading] = useState(false);
 
-  const onSubmit = (e) => {
+  const onSubmit = async (e) => {
+    setLoading(true);
     e.preventDefault();
     console.log(jobPosition, jobDesc, jobExperience);
+
+    const InputPrompt =
+      "Job Position: " +
+      jobPosition +
+      ", Job Description: " +
+      jobDesc +
+      ", Years of Experience: " +
+      jobExperience +
+      ", Depending on Job Position, Job Description & Years of Experience give us " +
+      process.env.NEXT_PUBLIC_INTERVIEW_QUESTION_COUNT +
+      " Interview Question along with Answer in JSON format. Give Question and Answers as Field in Json. ";
+
+    try {
+      const result = await chatSession.sendMessage(InputPrompt);
+      let MockJsonResp = await result.response.text();
+
+      // Clean up any non-JSON characters, including Markdown or extraneous characters
+      MockJsonResp = MockJsonResp.replace(/```json/g, "") // Remove '```json' if present
+        .replace(/```/g, "") // Remove closing code block marker if present
+        .trim(); // Trim whitespace from the start and end
+
+      // Parse the cleaned JSON
+      const parsedResponse = JSON.parse(MockJsonResp);
+      console.log(parsedResponse);
+    } catch (error) {
+      console.error("Error parsing JSON:", error);
+    } finally {
+      setLoading(false);
+    }
+    // const result = await chatSession.sendMessage(InputPrompt);
+    // const MockJsonResp = result.response
+    //   .text()
+    //   .replace("```json", "")
+    //   .replace("```", "");
+    // console.log(JSON.parse(MockJsonResp));
+    // setLoading(false);
   };
 
   return (
@@ -85,7 +125,16 @@ function AddNewInterview() {
                   >
                     Cancel
                   </Button>
-                  <Button type="submit">Start Interview</Button>
+                  <Button type="submit" disabled={loading}>
+                    {loading ? (
+                      <>
+                        <LoaderCircle className="animate-spin" />
+                        'Generating from AI'
+                      </>
+                    ) : (
+                      "Start Interview"
+                    )}
+                  </Button>
                 </div>
               </form>
             </DialogDescription>
